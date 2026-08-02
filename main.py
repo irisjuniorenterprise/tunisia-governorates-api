@@ -24,7 +24,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"])
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Chargement optimisé
-with open("tunisia.geojson", "r", encoding="utf-8") as f:
+with open("geojson/tunisia.geojson", "r", encoding="utf-8") as f:
     GEOJSON_DATA = json.load(f)
     GOVERNORATES = [f["properties"]["gouv_fr"] for f in GEOJSON_DATA["features"]]
     # Index pour recherche rapide
