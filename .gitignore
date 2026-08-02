@@ -1,8 +1,7 @@
-# .gitignore
-__pycache__/
-*.pyc
-venv/
-.env
-.DS_Store
-*.log
-tunisia.geojson
+__pycache__/      # Cache Python - NE PAS versionner
+*.pyc             # Fichiers compilés Python - NE PAS versionner
+venv/             # Environnement virtuel - NE PAS versionner
+.env              # Variables d'environnement - NE PAS versionner
+.DS_Store         # Fichiers système macOS - NE PAS versionner
+*.log             # Logs - NE PAS versionner
+tunisia.geojson   # Données volumineuses - NE PAS versionner
