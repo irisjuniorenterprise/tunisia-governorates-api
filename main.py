@@ -73,3 +73,13 @@ async def get_governorate(name: str):
         if feature["properties"]["gouv_fr"].lower() == name.lower():
             return feature
     raise HTTPException(status_code=404, detail=f"Governorate '{name}' not found")
+
+# Ajout dans main.py
+@app.get("/api/metrics", tags=["Metrics"])
+async def get_metrics():
+    return {
+        "average_response_time_ms": round(metrics.get_average() * 1000, 2),
+        "total_requests": metrics.request_count,
+        "samples": len(metrics.response_times),
+        "governorates_count": len(GOVERNORATES)
+    }
