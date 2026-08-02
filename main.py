@@ -28,7 +28,7 @@ app.add_middleware(
 
 # ========== CHARGEMENT DES DONNÉES ==========
 
-GEOJSON_URL = "https://raw.githubusercontent.com/irisjuniorenterprise/tunisia-governorates-api/main/geojson/tunisia.geojson"
+GEOJSON_URL = "https://github.com/irisjuniorenterprise/tunisia-governorates-api/blob/main/geojson/tunisia.geojson"
 
 def load_geojson():
     """Charge les données GeoJSON avec fallback"""
