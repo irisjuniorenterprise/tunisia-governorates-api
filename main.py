@@ -1,60 +1,55 @@
-# main.py - Version avec lecture depuis GitHub
-from fastapi import FastAPI, HTTPException, status, Response
-from fastapi.responses import JSONResponse, ORJSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
-from typing import Dict, Any
+# main.py - Version compatible Vercel
 import json
-import time
 import os
+import time
 import requests
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, ORJSONResponse
 from statistics import mean
 
-# Configuration
 app = FastAPI(
     title="Tunisia Governorates API",
     description="API de lecture des données géographiques des gouvernorats tunisiens",
     version="2.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json",
-    default_response_class=ORJSONResponse
+    openapi_url="/api/openapi.json"
 )
 
-# Middleware
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"])
-app.add_middleware(GZipMiddleware, minimum_size=1000)
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
 
-# ========== CHARGEMENT DES DONNÉES DEPUIS GITHUB ==========
+# ========== CHARGEMENT DES DONNÉES ==========
 
 GEOJSON_URL = "https://raw.githubusercontent.com/irisjuniorenterprise/tunisia-governorates-api/main/geojson/tunisia.geojson"
 
-def load_geojson_from_github():
-    """Charge le fichier GeoJSON depuis GitHub"""
+def load_geojson():
+    """Charge les données GeoJSON avec fallback"""
     try:
-        print(f"🔄 Loading GeoJSON from: {GEOJSON_URL}")
-        response = requests.get(GEOJSON_URL, timeout=10)
+        print(f"📥 Loading GeoJSON from: {GEOJSON_URL}")
+        response = requests.get(GEOJSON_URL, timeout=15)
         response.raise_for_status()
         data = response.json()
-        print(f"✅ GeoJSON loaded successfully: {len(data['features'])} features")
+        print(f"✅ Loaded {len(data.get('features', []))} features")
         return data
     except Exception as e:
-        print(f"❌ Error loading from GitHub: {e}")
-        # Fallback: essayer de charger depuis le système de fichiers local
-        try:
-            with open("geojson/tunisia.geojson", "r", encoding="utf-8") as f:
-                print("✅ Loaded from local file as fallback")
-                return json.load(f)
-        except:
-            print("❌ No local file found, using empty data")
-            return {"features": []}
+        print(f"❌ Error: {e}")
+        # Fallback: données minimales
+        return {"features": []}
 
-# Chargement des données
-GEOJSON_DATA = load_geojson_from_github()
+# Chargement au démarrage
+GEOJSON_DATA = load_geojson()
 GOVERNORATES = [f["properties"]["gouv_fr"] for f in GEOJSON_DATA["features"]]
 GOVERNORATE_INDEX = {g.lower(): g for g in GOVERNORATES}
 
-print(f"📊 Loaded {len(GOVERNORATES)} governorates")
+print(f"📊 {len(GOVERNORATES)} governorates loaded")
 
 # ========== MÉTRIQUES ==========
 
@@ -87,7 +82,6 @@ async def health():
     return {
         "status": "healthy",
         "total": len(GOVERNORATES),
-        "data_source": "GitHub",
         "data_loaded": len(GEOJSON_DATA["features"]) > 0
     }
 
@@ -107,14 +101,11 @@ async def list_governorates():
 async def get_governorate(name: str):
     if not GEOJSON_DATA["features"]:
         raise HTTPException(503, "Data not loaded")
-    
     if name.lower() not in GOVERNORATE_INDEX:
         raise HTTPException(404, f"Governorate '{name}' not found")
-    
     for f in GEOJSON_DATA["features"]:
         if f["properties"]["gouv_fr"].lower() == name.lower():
             return f
-    
     raise HTTPException(404, f"Governorate '{name}' not found")
 
 @app.get("/api/governorates/{name}/properties", tags=["Governorates"])
@@ -135,7 +126,6 @@ async def get_geometry(name: str):
 async def search(q: str, limit: int = 10):
     if not GEOJSON_DATA["features"]:
         raise HTTPException(503, "Data not loaded")
-    
     results = []
     for f in GEOJSON_DATA["features"]:
         name = f["properties"]["gouv_fr"]
@@ -150,23 +140,8 @@ async def get_metrics():
     return {
         "avg_response_ms": round(metrics.avg() * 1000, 2),
         "total_requests": metrics.count,
-        "samples": len(metrics.times),
-        "governorates_loaded": len(GOVERNORATES)
+        "samples": len(metrics.times)
     }
-
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"error": exc.detail, "status_code": exc.status_code}
-    )
-
-@app.exception_handler(Exception)
-async def general_exception_handler(request, exc):
-    return JSONResponse(
-        status_code=500,
-        content={"error": "Internal server error", "detail": str(exc)}
-    )
 
 if __name__ == "__main__":
     import uvicorn
