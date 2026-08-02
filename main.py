@@ -83,3 +83,36 @@ async def get_metrics():
         "samples": len(metrics.response_times),
         "governorates_count": len(GOVERNORATES)
     }
+
+# Ajout des endpoints spécialisés
+@app.get("/api/governorates/{name}/properties", tags=["Governorates"])
+async def get_governorate_properties(name: str):
+    for feature in GEOJSON_DATA["features"]:
+        if feature["properties"]["gouv_fr"].lower() == name.lower():
+            return {
+                "name": feature["properties"]["gouv_fr"],
+                "properties": feature["properties"]
+            }
+    raise HTTPException(status_code=404, detail=f"Governorate '{name}' not found")
+
+@app.get("/api/governorates/{name}/geometry", tags=["Governorates"])
+async def get_governorate_geometry(name: str):
+    for feature in GEOJSON_DATA["features"]:
+        if feature["properties"]["gouv_fr"].lower() == name.lower():
+            return {
+                "name": feature["properties"]["gouv_fr"],
+                "geometry": feature["geometry"]
+            }
+    raise HTTPException(status_code=404, detail=f"Governorate '{name}' not found")
+
+@app.get("/api/search", tags=["Search"])
+async def search_governorates(q: str, limit: int = 10):
+    results = []
+    search_term = q.lower()
+    for feature in GEOJSON_DATA["features"]:
+        name = feature["properties"]["gouv_fr"]
+        if search_term in name.lower():
+            results.append({"name": name, "type": feature["geometry"]["type"]})
+            if len(results) >= limit:
+                break
+    return {"query": q, "count": len(results), "results": results}
